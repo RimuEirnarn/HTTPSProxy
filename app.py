@@ -4,6 +4,8 @@ import requests
 from requests import Response as OtherResponse
 from http import HTTPStatus
 from flask_cors import CORS, cross_origin
+from werkzeug.exceptions import HTTPException
+from traceback import format_exception
 
 app = Flask(__name__)
 cors = CORS(app, resources={'/': {'origins': '*'}})
@@ -11,6 +13,30 @@ HTTPSTATUS = tuple(HTTPStatus)
 route = app
 
 app.config['CORS_HEADERS'] = 'Content-Type'
+
+
+@app.errorhandler(HTTPException)
+def http_error(exc: HTTPException):
+    response = exc.get_response()
+    code = exc.code
+    name = exc.name
+    desc = exc.description
+    response.data = render_template(
+        "error.html", error_code=code, name=name, desc=desc)
+    return response
+
+
+@app.errorhandler(Exception)
+def basic_errors(exc: Exception):
+    response = exc.get_response()
+    status = HTTPSTATUS[500]
+    desc = status.description
+    name = status.name
+    response.data = render_template(
+        "error.html", error_code=500, name=name, desc=desc)
+    print("Error has been saved to traceback.txt")
+    with open("traceback.txt") as file:
+        file.write(''.join(a for a in format_exception(exc)))
 
 
 def aborted(code: int, url: str):
